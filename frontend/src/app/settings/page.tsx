@@ -4,17 +4,28 @@ import { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import { User, Mail, Save, BadgeCheck } from "lucide-react";
 
+// Use Environment Variable for Production
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 export default function SettingsPage() {
   const [name, setName] = useState("Richa Maitry");
   const [email, setEmail] = useState("richa@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [origin, setOrigin] = useState("");
 
-  // You can later add a fetch here to get real user data from your backend
+  // Get the live URL for the badge display
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate API call
+    // Simulate API call to your Render backend
+    // Later, you can change this to: fetch(`${API_BASE_URL}/api/user/update`, { ... })
     setTimeout(() => {
       alert("Profile updated successfully!");
       setIsSubmitting(false);
@@ -50,9 +61,8 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-bold border-2 border-white shadow-sm">
                     {name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
+                      ? name.split(" ").map((n) => n[0]).join("")
+                      : "U"}
                   </div>
                   <button
                     type="button"
@@ -101,7 +111,7 @@ export default function SettingsPage() {
               </form>
             </div>
 
-            {/* Account Status Badge (Just for UI polish) */}
+            {/* Account Status Badge */}
             <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3">
               <BadgeCheck className="text-indigo-600" size={20} />
               <div className="text-sm">
@@ -109,8 +119,10 @@ export default function SettingsPage() {
                   Account Verified.
                 </span>
                 <p className="text-indigo-700/70 text-xs">
-                  Your public booking page is live at cal.com/
-                  {name.toLowerCase().replace(" ", "-")}
+                  Your public booking page is live at: <br />
+                  <span className="font-mono text-[10px] break-all">
+                    {origin}/richa-maitry
+                  </span>
                 </p>
               </div>
             </div>

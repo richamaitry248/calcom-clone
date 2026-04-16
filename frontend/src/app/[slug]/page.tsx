@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { format, addDays, startOfToday, isSameDay } from "date-fns";
 
-// --- HELPER FUNCTIONS (Outside component) ---
+// Use Environment Variable for Production
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+// --- HELPER FUNCTIONS ---
 const generateTimeSlots = (
   start: string,
   end: string,
@@ -27,23 +30,17 @@ const generateTimeSlots = (
 
   let currentMinutes = startH * 60 + startM;
   const endMinutes = endH * 60 + endM;
-
-  // The interval is the time spent in the meeting PLUS the buffer
   const interval = duration + buffer;
 
-  // We ensure the meeting can actually fit before the end time
   while (currentMinutes + duration <= endMinutes) {
-    const h = Math.floor(currentMinutes / 60)
-      .toString()
-      .padStart(2, "0");
+    const h = Math.floor(currentMinutes / 60).toString().padStart(2, "0");
     const m = (currentMinutes % 60).toString().padStart(2, "0");
     slots.push(`${h}:${m}`);
-
-    // Move to the next slot start time
     currentMinutes += interval;
   }
   return slots;
 };
+
 interface EventType {
   id: number;
   title: string;
@@ -75,11 +72,8 @@ export default function PublicBookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const today = startOfToday();
-  const availableDays = Array.from({ length: 14 }).map((_, i) =>
-    addDays(today, i),
-  );
+  const availableDays = Array.from({ length: 14 }).map((_, i) => addDays(today, i));
 
-  // --- DYNAMIC SLOT CALCULATION ---
   const currentDaySettings = availabilityData.find(
     (d) => d.day_of_week === format(selectedDate, "EEEE"),
   );
@@ -95,7 +89,6 @@ export default function PublicBookingPage() {
 
   const availableTimeSlots = allTimeSlots.filter((time) => {
     if (!Array.isArray(bookedSlots)) return true;
-
     const [sH, sM] = time.split(":").map(Number);
     const formattedTime = `${sH.toString().padStart(2, "0")}:${sM.toString().padStart(2, "0")}`;
     const potentialStart = sH * 60 + sM;
@@ -116,23 +109,15 @@ export default function PublicBookingPage() {
   });
 
   const isDayDisabled = (date: Date) => {
-    const dayName = format(date, "EEEE"); // Gets "Monday", "Sunday", etc.
-
-    // Find the settings for this specific day from the data we fetched
+    const dayName = format(date, "EEEE");
     const daySettings = availabilityData.find((d) => d.day_of_week === dayName);
-
-    // If the day is found in DB and is_active is false, DISABLE it.
-    // If the day is NOT found in DB, we disable it by default for safety.
-    if (daySettings) {
-      return daySettings.is_active === false;
-    }
-
+    if (daySettings) return daySettings.is_active === false;
     return true;
   };
 
-  // --- EFFECTS ---
+  // --- REFACTORED EFFECTS WITH API_BASE_URL ---
   useEffect(() => {
-    fetch("http://localhost:5000/api/availability")
+    fetch(`${API_BASE_URL}/api/availability`)
       .then((res) => res.json())
       .then((data) => setAvailabilityData(data))
       .catch((err) => console.error("Error fetching availability:", err));
@@ -140,7 +125,7 @@ export default function PublicBookingPage() {
 
   useEffect(() => {
     if (params.slug) {
-      fetch(`http://localhost:5000/api/event-types/slug/${params.slug}`)
+      fetch(`${API_BASE_URL}/api/event-types/slug/${params.slug}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           setEvent(data);
@@ -153,14 +138,13 @@ export default function PublicBookingPage() {
   useEffect(() => {
     if (selectedDate) {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
-      fetch(`http://localhost:5000/api/booked-slots?date=${dateStr}`)
+      fetch(`${API_BASE_URL}/api/booked-slots?date=${dateStr}`)
         .then((res) => res.json())
         .then((data) => setBookedSlots(Array.isArray(data) ? data : []))
         .catch(() => setBookedSlots([]));
     }
   }, [selectedDate]);
 
-  // --- HANDLERS ---
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!event) return;
@@ -168,11 +152,9 @@ export default function PublicBookingPage() {
     try {
       const startDateString = format(selectedDate, "yyyy-MM-dd");
       const startDateTime = new Date(`${startDateString}T${selectedTime}:00`);
-      const endDateTime = new Date(
-        startDateTime.getTime() + event.duration * 60000,
-      );
+      const endDateTime = new Date(startDateTime.getTime() + event.duration * 60000);
 
-      const res = await fetch("http://localhost:5000/api/bookings", {
+      const res = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -187,24 +169,16 @@ export default function PublicBookingPage() {
       if (res.ok) setStep(3);
       else alert("Error booking event");
     } catch (err) {
-      alert("Network Error");
+      alert("Network Error: Backend may be sleeping.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        Loading...
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50">Loading...</div>;
   if (!event)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        Event not found.
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50">Event not found.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
@@ -219,21 +193,14 @@ export default function PublicBookingPage() {
               <ArrowLeft size={20} />
             </button>
           )}
-          <div className="text-slate-500 font-medium mb-4 text-sm">
-            Richa Maitry
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-4">
-            {event.title}
-          </h1>
-
+          <div className="text-slate-500 font-medium mb-4 text-sm">Richa Maitry</div>
+          <h1 className="text-2xl font-bold text-slate-900 mb-4">{event.title}</h1>
           <div className="space-y-4 text-slate-600 font-medium text-sm flex-1">
             <div className="flex items-center gap-3">
               <Clock size={18} className="text-slate-400" />
               <span>{event.duration} min</span>
               {event.buffer_time > 0 && (
-                <span className="text-xs text-slate-400 font-normal">
-                  (+{event.buffer_time}m transition)
-                </span>
+                <span className="text-xs text-slate-400 font-normal">(+{event.buffer_time}m transition)</span>
               )}
             </div>
             <div className="flex items-center gap-3">
@@ -254,17 +221,9 @@ export default function PublicBookingPage() {
           {step === 1 && (
             <div className="flex flex-col md:flex-row gap-8 h-full">
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-slate-900 mb-6">
-                  Select a Date & Time
-                </h2>
+                <h2 className="text-lg font-semibold text-slate-900 mb-6">Select a Date & Time</h2>
                 <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500 mb-2">
-                  <div>SU</div>
-                  <div>MO</div>
-                  <div>TU</div>
-                  <div>WE</div>
-                  <div>TH</div>
-                  <div>FR</div>
-                  <div>SA</div>
+                  <div>SU</div><div>MO</div><div>TU</div><div>WE</div><div>TH</div><div>FR</div><div>SA</div>
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                   {Array.from({ length: today.getDay() }).map((_, i) => (
@@ -289,16 +248,13 @@ export default function PublicBookingPage() {
                   })}
                 </div>
               </div>
-
               <div className="w-full md:w-48 flex flex-col h-[400px]">
                 <h3 className="text-sm font-medium text-slate-900 mb-4 text-center">
                   {format(selectedDate, "EEEE, MMM d")}
                 </h3>
                 <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                   {availableTimeSlots.length === 0 ? (
-                    <div className="text-center text-sm text-slate-500 py-4">
-                      No times available
-                    </div>
+                    <div className="text-center text-sm text-slate-500 py-4">No times available</div>
                   ) : (
                     availableTimeSlots.map((time, i) => (
                       <div key={i} className="flex gap-2">
@@ -326,14 +282,10 @@ export default function PublicBookingPage() {
 
           {step === 2 && (
             <div className="max-w-md mx-auto h-full flex flex-col justify-center">
-              <h2 className="text-xl font-bold text-slate-900 mb-6">
-                Enter Details
-              </h2>
+              <h2 className="text-xl font-bold text-slate-900 mb-6">Enter Details</h2>
               <form onSubmit={handleBookingSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Name
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
                   <input
                     required
                     type="text"
@@ -343,9 +295,7 @@ export default function PublicBookingPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
                   <input
                     required
                     type="email"
@@ -368,18 +318,10 @@ export default function PublicBookingPage() {
           {step === 3 && (
             <div className="h-full w-full flex flex-col items-center justify-center text-center space-y-6">
               <div className="flex items-center justify-center rounded-full bg-green-50 w-20 h-20">
-                <CheckCircle2
-                  size={48}
-                  className="text-green-600 animate-bounce"
-                />
+                <CheckCircle2 size={48} className="text-green-600 animate-bounce" />
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                You are all set!
-              </h2>
-              <p className="text-slate-500 text-sm">
-                Confirmation sent to{" "}
-                <span className="font-semibold">{guestEmail}</span>.
-              </p>
+              <h2 className="text-2xl font-bold text-slate-900">You are all set!</h2>
+              <p className="text-slate-500 text-sm">Confirmation sent to <span className="font-semibold">{guestEmail}</span>.</p>
               <button
                 onClick={() => window.location.reload()}
                 className="inline-flex items-center gap-2 text-indigo-600 text-sm font-semibold hover:underline"

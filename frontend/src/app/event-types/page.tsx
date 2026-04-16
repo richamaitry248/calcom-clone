@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import { Clock, Plus, MoreHorizontal, Copy } from "lucide-react";
 
+// 1. Declare the API Base URL (Critical for deployment)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 const generateSlug = (text: string) => {
   return text
     .toLowerCase()
@@ -28,7 +31,8 @@ export default function HomePage() {
 
   // 1. READ: Fetch existing events on load
   useEffect(() => {
-    fetch("http://localhost:5000/api/event-types")
+    // Fixed with backticks for variable template
+    fetch(`${API_BASE_URL}/api/event-types`)
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -52,8 +56,8 @@ export default function HomePage() {
 
     const method = editingId ? "PUT" : "POST";
     const url = editingId
-      ? `http://localhost:5000/api/event-types/${editingId}`
-      : `http://localhost:5000/api/event-types`;
+      ? `${API_BASE_URL}/api/event-types/${editingId}`
+      : `${API_BASE_URL}/api/event-types`;
 
     try {
       const res = await fetch(url, {
@@ -84,7 +88,7 @@ export default function HomePage() {
       }
     } catch (err) {
       console.error(err);
-      alert("Network Error");
+      alert("Network Error: Is the backend server waking up?");
     }
   };
 
@@ -92,7 +96,7 @@ export default function HomePage() {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Are you sure you want to delete this event?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/event-types/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/event-types/${id}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -124,12 +128,12 @@ export default function HomePage() {
   };
 
   const copyLink = (slug: string) => {
-    navigator.clipboard.writeText(`http://localhost:3000/${slug}`);
+    // Dynamic origin detection for live links
+    navigator.clipboard.writeText(`${window.location.origin}/${slug}`);
     alert("Link copied to clipboard!");
   };
 
   return (
-    /* Responsive Wrapper: flex-col on mobile, flex-row on md+ */
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-900 font-sans">
       <Sidebar />
 
@@ -154,7 +158,7 @@ export default function HomePage() {
             </button>
           </div>
 
-          {/* Event Cards Grid: Responsive 1 col -> 2 col */}
+          {/* Event Cards Grid */}
           {loading ? (
             <div className="text-slate-500 flex justify-center py-12">
               Loading your events...
@@ -166,12 +170,10 @@ export default function HomePage() {
                   key={event.id}
                   className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative group"
                 >
-                  {/* Three Dots Menu */}
                   <div className="absolute top-4 right-4">
                     <button className="text-slate-400 hover:text-slate-700 p-1 rounded-md hover:bg-slate-100 transition-colors">
                       <MoreHorizontal size={20} />
                     </button>
-                    {/* Tooltip/Dropdown logic depends on group-hover */}
                     <div className="absolute right-0 top-8 bg-white border border-slate-200 shadow-lg rounded-md w-32 py-1 hidden group-hover:block z-10">
                       <button
                         onClick={() => openEditModal(event)}

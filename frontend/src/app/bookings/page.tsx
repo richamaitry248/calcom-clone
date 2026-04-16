@@ -5,6 +5,9 @@ import Sidebar from "@/components/Sidebar";
 import { Calendar, Clock, Video, User } from "lucide-react";
 import { format } from "date-fns";
 
+// Use Environment Variable for Production
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 interface Booking {
   id: number;
   event_title: string;
@@ -34,12 +37,13 @@ export default function BookingsDashboard() {
 
   const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
 
+  // --- DELETE/CANCEL: Updated with API_BASE_URL ---
   const handleCancel = async (id: number) => {
     if (!window.confirm("Are you sure you want to cancel this booking?"))
       return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/bookings/${id}`, {
         method: "DELETE",
       });
 
@@ -55,12 +59,13 @@ export default function BookingsDashboard() {
       }
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Network error. Is the backend running?");
+      alert("Network error: Backend might be down or sleeping.");
     }
   };
 
+  // --- READ: Updated with API_BASE_URL and Backticks ---
   useEffect(() => {
-    fetch("http://localhost:5000/api/bookings")
+    fetch(`${API_BASE_URL}/api/bookings`)
       .then((res) => res.json())
       .then((data) => {
         setBookings(data);
@@ -68,6 +73,7 @@ export default function BookingsDashboard() {
       })
       .catch((err) => {
         console.error("Error fetching bookings:", err);
+        setBookings([]);
         setLoading(false);
       });
   }, []);
@@ -92,7 +98,7 @@ export default function BookingsDashboard() {
             </p>
           </div>
 
-          {/* TAB NAVIGATION: Scrollable on mobile */}
+          {/* TAB NAVIGATION */}
           <div className="flex gap-6 border-b border-slate-200 mb-6 overflow-x-auto whitespace-nowrap">
             {(["upcoming", "past", "cancelled"] as const).map((tab) => (
               <button
@@ -121,7 +127,6 @@ export default function BookingsDashboard() {
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
               {currentList.map((booking, index) => {
                 const startTime = new Date(booking.start_time);
-                const endTime = new Date(booking.end_time);
 
                 return (
                   <div
@@ -133,7 +138,6 @@ export default function BookingsDashboard() {
                     } ${activeTab !== "upcoming" ? "opacity-70" : ""}`}
                   >
                     <div className="flex gap-4 md:gap-6">
-                      {/* Date Badge */}
                       <div className="flex flex-col items-center justify-center bg-indigo-50 text-indigo-700 rounded-lg p-2 md:p-3 min-w-[60px] md:min-w-[80px]">
                         <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">
                           {format(startTime, "MMM")}

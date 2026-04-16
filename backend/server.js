@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 require('dotenv').config(); // Loads your .env file
 
 const app = express();
-const PORT = 5000;
+
 
 
 // Middleware
