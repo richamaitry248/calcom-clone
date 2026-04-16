@@ -43,7 +43,7 @@ export default function Availability() {
           }
           const syncedData = DAYS.map((dayName) => {
             const dbEntry = data.find(
-              (d: d.day_of_week) => d.day_of_week === dayName,
+              (d:any) => d.day_of_week === dayName,
             );
             if (dbEntry) {
               return {
