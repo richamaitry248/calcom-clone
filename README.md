@@ -70,7 +70,6 @@ Bash
 cd ../frontend
 npm install
 # Create a .env.local file:
-# NEXT_PUBLIC_API_URL=http://localhost:5000
 npm run dev
 🚀 Deployment Commands Used
 To keep the production environment synced with local changes, the following CI/CD workflow was used:
